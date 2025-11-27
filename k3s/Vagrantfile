@@ -80,10 +80,10 @@ Vagrant.configure("2") do |config|
     privileged: true,
     inline: <<-SHELL
       for i in `seq 1 ${CONTROL_PLANE_COUNT}`; do
-        echo "$SUBNET.$((CONTROL_PLANE_START_IP+i)) $CONTROL_PLANE_HOSTNAME_PREFIX${i}.$HOSTNAME_FQDNSUFFIX" >> /etc/hosts
+        echo "$SUBNET.$((CONTROL_PLANE_START_IP+i)) $CONTROL_PLANE_HOSTNAME_PREFIX${i} $CONTROL_PLANE_HOSTNAME_PREFIX${i}.$HOSTNAME_FQDNSUFFIX" >> /etc/hosts
       done
       for i in `seq 1 ${WORKER_COUNT}`; do
-        echo "$SUBNET.$((WORKER_START_IP+i)) $WORKER_HOSTNAME_PREFIX${i}.$HOSTNAME_FQDNSUFFIX" >> /etc/hosts
+        echo "$SUBNET.$((WORKER_START_IP+i)) $WORKER_HOSTNAME_PREFIX${i} $WORKER_HOSTNAME_PREFIX${i}.$HOSTNAME_FQDNSUFFIX" >> /etc/hosts
       done
     SHELL
 

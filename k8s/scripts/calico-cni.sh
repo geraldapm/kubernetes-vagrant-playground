@@ -3,12 +3,14 @@
 # Install Calico CNI Network Plugin with tigera operator
 set -euxo pipefail
 
+CALICO_VERSION="v3.31.1"
+
 # install Tigera Operator
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.1/manifests/operator-crds.yaml
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.1/manifests/tigera-operator.yaml
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$CALICO_VERSION/manifests/operator-crds.yaml
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$CALICO_VERSION/manifests/tigera-operator.yaml
 
 # install Calico ebpf custom resources
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.1/manifests/custom-resources-bpf.yaml
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/$CALICO_VERSION/manifests/custom-resources-bpf.yaml
 
 # Get current subnet interface
 local_interface=$(ip route | grep $SUBNET | awk '{print $3'} | head -n 1)
@@ -34,7 +36,7 @@ spec:
     ipPools:
       - name: default-ipv4-ippool
         blockSize: 26
-        cidr: 10.244.0.0/16
+        cidr: ${POD_CIDR}
         encapsulation: VXLANCrossSubnet
         natOutgoing: Enabled
         nodeSelector: all()

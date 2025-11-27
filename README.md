@@ -30,4 +30,4 @@ Quick start:
 2. Edit the Vagrantfile as needed (e.g., adjust VM count, resources, networking)
 3. Run: `vagrant up` (requires Vagrant and a provider like VirtualBox)
 
-Purpose: learning, testing and rapid prototyping of cluster setups. Adjust provisioning and networking per-example as needed.# Create a brief summary that this project is a playground vagrant files for various kubernetes deployments.
+Purpose: learning, testing and rapid prototyping of cluster setups. Adjust provisioning and networking per-example as needed.

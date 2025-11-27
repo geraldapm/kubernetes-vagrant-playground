@@ -1,0 +1,56 @@
+def default_s(key, default)
+  ENV[key] && ! ENV[key].empty? ? ENV[key] : default
+end
+
+def default_i(key, default)
+  default_s(key, default).to_i
+end
+
+def default_b(key, default)
+  default_s(key, default).to_s.downcase == "true"
+end
+
+Vagrant.configure("2") do |config|
+  VAGRANT_BASEIMG = default_s('VAGRANT_BASEIMG', 'cloud-image/ubuntu-24.04')
+
+  BASTION_IP_ADDRESS = default_s('BASTION_IP_ADDRESS', '192.168.56.254')
+  
+  # Control Plane and Worker Node Hostnames
+  HOSTNAME_FQDNSUFFIX = default_s('HOSTNAME_FQDNSUFFIX', 'vagrant.gpm.my.id')
+  BASTION_HOSTNAME_PREFIX = default_s('BASTION_HOSTNAME_PREFIX', 'gpmbastionsys')
+
+  # vCPUS and Memory for the VMs
+  BASTION_CPUS = default_i('BASTION_CPUS', 2)
+  BASTION_MEMORY = default_i('BASTION_MEMORY', 4096)
+  VB_GROUP = default_s('VB_GROUP', 'ctrl')
+
+  config.vm.box = "#{VAGRANT_BASEIMG}"
+
+  config.vm.provider :virtualbox do |vb|
+    vb.linked_clone = false
+    vb.customize ["modifyvm", :id, "--groups", "/" + VB_GROUP]
+    vb.customize ["modifyvm", :id, "--nested-hw-virt", "on"]
+    vb.customize ["modifyvm", :id, "--ioapic", "on"]
+  end
+
+  # Include ssh key
+  config.vm.provision "shell" do |s|
+    ssh_pub_key = File.readlines("#{Dir.home}/.ssh/id_ed25519.pub").first.strip
+    s.inline = <<-SHELL
+      echo #{ssh_pub_key} >> /home/vagrant/.ssh/authorized_keys
+      echo #{ssh_pub_key} >> /root/.ssh/authorized_keys
+    SHELL
+  end
+
+# Define Bastion VM
+  config.vm.define "#{BASTION_HOSTNAME_PREFIX}" do |bastion|
+    bastion.vm.hostname = "#{BASTION_HOSTNAME_PREFIX}.#{HOSTNAME_FQDNSUFFIX}"
+    ip_addr = "#{BASTION_IP_ADDRESS}"
+    bastion.vm.network :private_network, nic_type: "virtio", ip: ip_addr
+    bastion.vm.provider :virtualbox do |vb|
+        vb.name = "#{BASTION_HOSTNAME_PREFIX}"
+        vb.memory = BASTION_MEMORY
+        vb.cpus = BASTION_CPUS
+      end
+  end
+end

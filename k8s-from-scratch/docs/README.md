@@ -72,6 +72,7 @@ done
 ```
 
 # Generate kubeconfig for kubernetes components
+Change "gpmrawk8s" with hostname prefix for easy identifying and have those lists stored on /etc/hosts.
 - Install kubectl on origin server
 ```
 export KUBERNETS_VERSION=1.32

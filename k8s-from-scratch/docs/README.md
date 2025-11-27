@@ -1,6 +1,6 @@
 # Tutorial to provision k8s cluster from scratch using Vagrant.
 
-This repository contains a step-by-step tutorial to provision a Kubernetes cluster from scratch using Vagrant and VirtualBox. The tutorial is designed for educational purposes and aims to help users understand the inner workings of Kubernetes by building a cluster manually. 
+This repository contains a step-by-step tutorial to provision a Kubernetes cluster from scratch using Vagrant and VirtualBox. The tutorial is designed for educational purposes and aims to help users understand the inner workings of Kubernetes by building a cluster MANUALLY. 
 
 Reference: https://github.com/kelseyhightower/kubernetes-the-hard-way
 
@@ -9,6 +9,17 @@ Reference: https://github.com/kelseyhightower/kubernetes-the-hard-way
 ## Provision VM using vagrant
 - Included scripts to initial provision VM and setup crio as CRI manually
 - Included scripts to install keepalived as floating IP to adapt multi-node control-plane nodes
+
+## Define Control Plane and Worker Hostname & IPs
+- We are using below configurations with POD IP range 10.244.0.0/16 and Service IP range 10.96.0.0/12. Make sure that /etc/hosts on each node server is identical to ease the installation.
+```
+192.168.56.151 gpmrawk8s-controlplane1 gpmrawk8s-controlplane1.vagrant.gpm.my.id
+192.168.56.152 gpmrawk8s-controlplane2 gpmrawk8s-controlplane2.vagrant.gpm.my.id
+192.168.56.153 gpmrawk8s-controlplane3 gpmrawk8s-controlplane3.vagrant.gpm.my.id
+192.168.56.161 gpmrawk8s-worker1 gpmrawk8s-worker1.vagrant.gpm.my.id
+192.168.56.162 gpmrawk8s-worker2 gpmrawk8s-worker2.vagrant.gpm.my.id
+192.168.56.199 floating
+```
 
 ## Provision CA Cert and underlying certificates (Very Important)
 Initial CA configs are available on [../setup-configs/ca.conf](../setup-configs/ca.conf). Change the "10.96.0." depending on desired kubernetes service subnet range (defaults to 10.96.0.0/12).

@@ -12,6 +12,14 @@ sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
 rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
 
 ### Example if needed more than one subnet range
-#/usr/local/bin/cilium install --version 1.18.4 --set ipam.operator.clusterPoolIPv4PodCIDRList="{\"${POD_CIDR}\", \"10.0.84.0/28\"}"
+#/usr/local/bin/cilium upgrade --version 1.18.4 --set ipam.operator.clusterPoolIPv4PodCIDRList="1${POD_CIDR} 10.245.0.0/16"
 
-/usr/local/bin/cilium install --version 1.18.4 --set ipam.operator.clusterPoolIPv4PodCIDRList="{\"${POD_CIDR}\"}"
+#API_SERVER_IP=$FLOATING_IP
+API_SERVER_IP=192.168.56.99
+API_SERVER_PORT=6443
+
+/usr/local/bin/cilium install --version 1.18.4 \
+    --set kubeProxyReplacement=true \
+    --set k8sServiceHost=${API_SERVER_IP} \
+    --set k8sServicePort=${API_SERVER_PORT} \
+    --set ipam.operator.clusterPoolIPv4PodCIDRList=${POD_CIDR}

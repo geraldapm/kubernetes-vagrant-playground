@@ -46,7 +46,7 @@ for cert in $(ls *.crt); do openssl x509 -noout -text -in $cert | grep -A1 -iE "
 ```
 - Setup Copy file to each kubernetes nodes (requires passwordless login on origin server). NOTE: Change "gpmrawk8s" with hostname prefix for easy identifying and have those lists stored on /etc/hosts.
 ```
-for host in $(cat /etc/hosts | grep gpmrawk8s | awk '{print $2}' ); do
+for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
   ssh root@${host} mkdir /var/lib/kubelet/
   scp ca.crt root@${host}:/var/lib/kubelet/
   scp ${host}.crt root@${host}:/var/lib/kubelet/kubelet.crt
@@ -76,11 +76,11 @@ curl -fsSL https://pkgs.k8s.io/core:/stable:/v$KUBERNETES_VERSION/deb/Release.ke
 echo "deb [signed-by=/etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v$KUBERNETES_VERSION/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
 
 sudo apt-get update -y
-sudo apt-get install -y kubelet kubectl kubeadm cri-o jq
+sudo apt-get install -y kubectl
 ```
 - Generate kubelet kubeconfig. Change floating IP and Change "gpmrawk8s" with hostname prefix for easy identifying and have those lists stored on /etc/hosts.
 ```
-for host in $(cat /etc/hosts | grep gpmrawk8s | awk '{print $2}' ); do
+for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
   export FLOATING_IP=192.168.56.199
   kubectl config set-cluster gpmrawk8s \
     --certificate-authority=ca.crt \
@@ -515,8 +515,12 @@ failSwapOn: false
 maxPods: 16
 memorySwap:
   swapBehavior: NoSwap
+clusterDomain: cluster.local
+clusterDNS:
+  - $(echo "$SERVICE_CIDR" | cut -d'.' -f1-3).10
+podCIDR: "${POD_CIDR}"  
 port: 10250
-resolvConf: "/etc/resolv.conf"
+resolvConf: "/run/systemd/resolve/resolv.conf"
 registerNode: true
 runtimeRequestTimeout: "15m"
 tlsCertFile: "/var/lib/kubelet/kubelet.crt"
@@ -581,3 +585,264 @@ for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
   ssh root@${host} systemctl status kubelet kube-proxy --no-pager
 done
 ```
+- Verify kubernetes nodes status
+```
+kubectl get node  --kubeconfig admin.kubeconfig
+
+NAME                      STATUS   ROLES    AGE     VERSION
+gpmrawk8s-controlplane1   Ready    <none>   6m26s   v1.32.10
+gpmrawk8s-controlplane2   Ready    <none>   6m22s   v1.32.10
+gpmrawk8s-worker1         Ready    <none>   6m11s   v1.32.10
+gpmrawk8s-worker2         Ready    <none>   6m6s    v1.32.10
+```
+## Enable admin remote access
+- Copy admin.kubeconfig to ~/.kube/config
+```
+mkdir -p ~/.kube
+cp admin.kubeconfig ~/.kube/config
+chmod 600 ~/.kube/config
+```
+
+## Enable Pod Cluster Networking
+You can achieve this by installing Custom CNI or manually add pod routes based on this reference: https://github.com/kelseyhightower/kubernetes-the-hard-way/blob/master/docs/11-pod-network-routes.md
+
+In this tutorial we will use Cilium CNI to enable Pod Cluster Networking.
+- Install Cilium CNI
+```
+### Replace API_SERVER_IP with Floating IP
+API_SERVER_IP=192.168.56.199
+API_SERVER_PORT=6443
+
+CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
+CLI_ARCH=amd64
+if [ "$(uname -m)" = "aarch64" ]; then CLI_ARCH=arm64; fi
+curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum
+sudo tar xzvfC cilium-linux-${CLI_ARCH}.tar.gz /usr/local/bin
+rm cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum}
+
+/usr/local/bin/cilium install  --version 1.18.4 \
+    --set kubeProxyReplacement=true \
+    --set k8sServiceHost=${API_SERVER_IP} \
+    --set k8sServicePort=${API_SERVER_PORT} \
+    --set ipam.operator.clusterPoolIPv4PodCIDRList="10.244.0.0/16"
+```
+- Verify Cilium CNI installation
+```
+cilium status --wait
+# CTRL+C to abort
+cilium connectivity test
+```
+
+## Enable local DNS resolution with coreDNS
+Apply following YAML with modified POD CIDR (important!)
+```
+export SERVICE_CIDR=10.96.0.0/12
+cat <<EOF | tee coredns.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: coredns
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    kubernetes.io/bootstrapping: rbac-defaults
+  name: system:coredns
+rules:
+  - apiGroups:
+    - ""
+    resources:
+    - endpoints
+    - services
+    - pods
+    - namespaces
+    verbs:
+    - list
+    - watch
+  - apiGroups:
+    - discovery.k8s.io
+    resources:
+    - endpointslices
+    verbs:
+    - list
+    - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+  labels:
+    kubernetes.io/bootstrapping: rbac-defaults
+  name: system:coredns
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:coredns
+subjects:
+- kind: ServiceAccount
+  name: coredns
+  namespace: kube-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns
+  namespace: kube-system
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health {
+          lameduck 5s
+        }
+        ready
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+           pods insecure
+          fallthrough in-addr.arpa ip6.arpa
+        }
+        prometheus :9153
+        forward . /etc/resolv.conf {
+          max_concurrent 1000
+        }
+        cache 30
+        #loop
+        reload
+        loadbalance
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coredns
+  namespace: kube-system
+  labels:
+    k8s-app: kube-dns
+    kubernetes.io/name: "CoreDNS"
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      k8s-app: kube-dns
+  template:
+    metadata:
+      labels:
+        k8s-app: kube-dns
+    spec:
+      priorityClassName: system-cluster-critical
+      serviceAccountName: coredns
+      tolerations:
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+      nodeSelector:
+        kubernetes.io/os: linux
+      affinity:
+         podAntiAffinity:
+           requiredDuringSchedulingIgnoredDuringExecution:
+           - labelSelector:
+               matchExpressions:
+               - key: k8s-app
+                 operator: In
+                 values: ["kube-dns"]
+             topologyKey: kubernetes.io/hostname
+      containers:
+      - name: coredns
+        image: coredns/coredns:1.9.4
+        imagePullPolicy: IfNotPresent
+        resources:
+          limits:
+            memory: 170Mi
+          requests:
+            cpu: 100m
+            memory: 70Mi
+        args: [ "-conf", "/etc/coredns/Corefile" ]
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/coredns
+          readOnly: true
+        ports:
+        - containerPort: 53
+          name: dns
+          protocol: UDP
+        - containerPort: 53
+          name: dns-tcp
+          protocol: TCP
+        - containerPort: 9153
+          name: metrics
+          protocol: TCP
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            add:
+            - NET_BIND_SERVICE
+            drop:
+            - all
+          readOnlyRootFilesystem: true
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 60
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8181
+            scheme: HTTP
+      dnsPolicy: Default
+      volumes:
+        - name: config-volume
+          configMap:
+            name: coredns
+            items:
+            - key: Corefile
+              path: Corefile
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-dns
+  namespace: kube-system
+  annotations:
+    prometheus.io/port: "9153"
+    prometheus.io/scrape: "true"
+  labels:
+    k8s-app: kube-dns
+    kubernetes.io/cluster-service: "true"
+    kubernetes.io/name: "CoreDNS"
+spec:
+  selector:
+    k8s-app: kube-dns
+  clusterIP: 10.96.0.10
+  ports:
+  - name: dns
+    port: 53
+    protocol: UDP
+  - name: dns-tcp
+    port: 53
+    protocol: TCP
+  - name: metrics
+    port: 9153
+    protocol: TCP
+EOF
+
+kubectl apply -f coredns.yaml
+```
+- Verify DNS resolution
+```
+ kubectl run --rm -it --image=busybox -- nslookup kubernetes
+```
+
+## Final test: Sonobuoy conformance testing
+This testing is intended to check if the newly-created kubernetes cluster from scratch is production-ready :D
+Refer to this link: https://blog.yangjerry.tw/k8s-conformance-sonobuoy-en/

@@ -83,7 +83,6 @@ echo "deb [signed-by=/etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg] https://
 sudo apt-get update -y
 sudo apt-get install -y kubelet kubectl kubeadm cri-o jq
 ```
-
 - Generate kubelet kubeconfig. Change floating IP and Change "gpmrawk8s" with hostname prefix for easy identifying and have those lists stored on /etc/hosts.
 ```
 for host in $(cat /etc/hosts | grep gpmrawk8s | awk '{print $2}' ); do
@@ -262,5 +261,83 @@ EOF
 for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
   ssh root@${host} mkdir -p /etc/kubernetes
   scp encryption-config.yaml root@${host}:/etc/kubernetes
+done
+```
+
+## Bootstrap ETCD Cluster on each controlplane nodes
+- Download & Extract etcd releases to /usr/local/bin
+```
+ETCD_VER=v3.6.6
+
+# choose either URL
+GITHUB_URL=https://github.com/etcd-io/etcd/releases/download
+DOWNLOAD_URL=${GITHUB_URL}
+
+rm -f /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz
+rm -rf /tmp/etcd-download-test && mkdir -p /tmp/etcd-download-test
+
+curl -L ${DOWNLOAD_URL}/${ETCD_VER}/etcd-${ETCD_VER}-linux-amd64.tar.gz -o /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz
+tar xzvf /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz -C /tmp/etcd-download-test --strip-components=1 --no-same-owner
+rm -f /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz
+
+/tmp/etcd-download-test/etcd --version
+/tmp/etcd-download-test/etcdctl version
+/tmp/etcd-download-test/etcdutl version
+
+for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
+  scp /tmp/etcd-download-test/{etcd,etcdctl,etcdutl} root@${host}:/usr/local/bin
+  ssh root@${host} /usr/local/bin/etcd --version
+  ssh root@${host} /usr/local/bin/etcdctl version
+  ssh root@${host} /usr/local/bin/etcdutl version
+done
+```
+- Create etcd dir and etcd pki certs dir
+```
+for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
+  ssh root@${host} mkdir -p /var/lib/etcd /etc/kubernetes/pki/etcd
+  ssh root@${host} useradd -m -s /sbin/nologin -U etcd -u 427
+  ssh root@${host} chown -R etcd:etcd /var/lib/etcd
+  scp {ca.crt,ca.key,kube-etcd.crt,kube-etcd.key} root@${host}:/etc/kubernetes/pki/etcd
+  ssh root@${host} chown -R etcd:etcd /etc/kubernetes/pki/etcd
+done
+```
+- Generate etcd-server systemd definition. Please Change the Hostname and IP inside the script. The scripts are in [../setup-scripts/etcd-systemd.sh](../setup-scripts/etcd-systemd.sh).
+- Copy each of etcd-server Script into each controlplane nodes and start them.
+```
+for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
+  scp etcd-${host}.service root@${host}:/etc/systemd/system/etcd.service
+  ssh root@${host} systemctl daemon-reload
+  ssh root@${host} systemctl enable etcd
+  ssh root@${host} timeout 10s systemctl start etcd
+  ssh root@${host} systemctl status etcd --no-pager
+done
+```
+- Verify etcd member list. Change the TEST_IP env with one of control-plane IP
+```
+export TEST_IP=192.168.56.151
+sudo ETCDCTL_API=3 /tmp/etcd-download-test/etcdctl member list \
+  --endpoints=https://${TEST_IP}:2379 \
+  --cacert=ca.crt \
+  --cert=kube-etcd.crt \
+  --key=kube-etcd.key
+unset TEST_IP 
+```
+
+## Bootstrap kubernetes controlplane components on each controlplane nodes
+This time we only want to provision kubernetes controlplane components only. Later on we can provision those controlplane nodes as workload with worker nodes altogether.
+- Download Kubernetes Server binary. Adjust kubernetes versions as necessary
+```
+export KUBERNETES_VERSION_MINOR=v1.32.10
+rm -f /tmp/kubernetes-server-linux-amd64.tar.gz
+rm -rf /tmp/kubernetes-server && mkdir -p /tmp/kubernetes-server
+curl -L https://dl.k8s.io/${KUBERNETES_VERSION_MINOR}/kubernetes-server-linux-amd64.tar.gz -o /tmp/kubernetes-server-linux-amd64.tar.gz
+tar xzvf /tmp/kubernetes-server-linux-amd64.tar.gz -C /tmp/kubernetes-server --strip-components=1 --no-same-owner
+rm -f /tmp/kubernetes-server-linux-amd64.tar.gz
+```
+- Copy Kubernetes Server binary to each kubernetes controlplane nodes.
+```
+for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
+  scp /tmp/kubernetes-server/server/bin/{kube-apiserver,kube-scheduler,kube-controller-manager,kubelet,kube-proxy,kubectl} root@${host}:/usr/local/bin
+  ssh root@${host} kube-apiserver --version
 done
 ```

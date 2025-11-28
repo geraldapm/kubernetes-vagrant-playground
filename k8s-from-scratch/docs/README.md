@@ -48,14 +48,9 @@ for cert in $(ls *.crt); do openssl x509 -noout -text -in $cert | grep -A1 -iE "
 ```
 for host in $(cat /etc/hosts | grep gpmrawk8s | awk '{print $2}' ); do
   ssh root@${host} mkdir /var/lib/kubelet/
-
   scp ca.crt root@${host}:/var/lib/kubelet/
-
-  scp ${host}.crt \
-    root@${host}:/var/lib/kubelet/kubelet.crt
-
-  scp ${host}.key \
-    root@${host}:/var/lib/kubelet/kubelet.key
+  scp ${host}.crt root@${host}:/var/lib/kubelet/kubelet.crt
+  scp ${host}.key root@${host}:/var/lib/kubelet/kubelet.key
 done
 ```
 - Then copy kubernetes components certs into each of kubernetes control-planes
@@ -215,14 +210,10 @@ unset FLOATING_IP
 ```
 - Copy the kubelet and kube-proxy kubeconfig files
 ```
-for host in $(cat /etc/hosts | grep gpmrawk8s | awk '{print $2}' ); do
+for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
   ssh root@${host} "mkdir -p /var/lib/{kube-proxy,kubelet}"
-
-  scp kube-proxy.kubeconfig \
-    root@${host}:/var/lib/kube-proxy/kubeconfig \
-
-  scp ${host}.kubeconfig \
-    root@${host}:/var/lib/kubelet/kubeconfig
+  scp kube-proxy.kubeconfig root@${host}:/var/lib/kube-proxy/kubeconfig
+  scp ${host}.kubeconfig root@${host}:/var/lib/kubelet/kubeconfig
 done
 ```
 - Finally copy the control-plane kubernetes components kubeconfig
@@ -498,5 +489,95 @@ EOF
 for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
   scp {02-cgroup-manager.conf,02-pod-management.conf}  root@${host}:/etc/crio/conf.d/
   ssh root@${host} sudo systemctl restart crio
+done
+```
+- Generate kubelet config and kube-proxy config incluing its systemd definition
+```
+export SERVICE_CIDR="10.96.0.0/12"
+export POD_CIDR="10.244.0.0/16"
+cat <<EOF | sudo tee kubelet-config.yaml
+kind: KubeletConfiguration
+apiVersion: kubelet.config.k8s.io/v1beta1
+address: "0.0.0.0"
+authentication:
+  anonymous:
+    enabled: false
+  webhook:
+    enabled: true
+  x509:
+    clientCAFile: "/var/lib/kubelet/ca.crt"
+authorization:
+  mode: Webhook
+cgroupDriver: systemd
+containerRuntimeEndpoint: "unix:///var/run/crio/crio.sock"
+enableServer: true
+failSwapOn: false
+maxPods: 16
+memorySwap:
+  swapBehavior: NoSwap
+port: 10250
+resolvConf: "/etc/resolv.conf"
+registerNode: true
+runtimeRequestTimeout: "15m"
+tlsCertFile: "/var/lib/kubelet/kubelet.crt"
+tlsPrivateKeyFile: "/var/lib/kubelet/kubelet.key"
+EOF
+
+cat <<EOF | sudo tee kube-proxy-config.yaml
+kind: KubeProxyConfiguration
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+clientConnection:
+  kubeconfig: "/var/lib/kube-proxy/kubeconfig"
+mode: "iptables"
+clusterCIDR: "${POD_CIDR}"
+EOF
+
+cat <<EOF | sudo tee kubelet.service
+[Unit]
+Description=Kubernetes Kubelet
+Documentation=https://github.com/kubernetes/kubernetes
+After=crio.service
+Requires=crio.service
+
+[Service]
+ExecStart=/usr/local/bin/kubelet \
+  --config=/var/lib/kubelet/kubelet-config.yaml \
+  --kubeconfig=/var/lib/kubelet/kubeconfig \
+  --v=2
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat <<EOF | sudo tee kube-proxy.service
+[Unit]
+Description=Kubernetes Kube Proxy
+Documentation=https://github.com/kubernetes/kubernetes
+
+[Service]
+ExecStart=/usr/local/bin/kube-proxy \\
+  --config=/var/lib/kube-proxy/kube-proxy-config.yaml
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+unset SERVICE_CIDR
+unset POD_CIDR
+```
+- Copy those configurations and start kubelet and kube-proxy
+```
+for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
+  scp kubelet-config.yaml root@${host}:/var/lib/kubelet/kubelet-config.yaml
+  scp kube-proxy-config.yaml root@${host}:/var/lib/kube-proxy/kube-proxy-config.yaml
+  scp {kubelet.service,kube-proxy.service} root@${host}:/etc/systemd/system/
+  ssh root@${host} systemctl daemon-reload
+  ssh root@${host} systemctl enable kubelet kube-proxy
+  ssh root@${host} timeout 10s systemctl start kubelet kube-proxy
+  ssh root@${host} systemctl status kubelet kube-proxy --no-pager
 done
 ```

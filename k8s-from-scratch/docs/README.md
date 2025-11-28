@@ -341,3 +341,59 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
   ssh root@${host} kube-apiserver --version
 done
 ```
+- Generate kubernetes controlplane systemd definition for each controlplane nodes. Please Change the Hostname and IP inside the script. The scripts are in [../setup-scripts/controlplane-systemd.sh](../setup-scripts/controlplane-systemd.sh).
+- Copy kubernetes controlplane systemd definition and configs into each controlplane nodes and start the systemd services.
+```
+for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
+  scp kube-apiserver-${host}.service root@${host}:/etc/systemd/system/kube-apiserver.service
+  scp kube-controller-manager-${host}.service root@${host}:/etc/systemd/system/kube-controller-manager.service
+  scp kube-scheduler-${host}.service root@${host}:/etc/systemd/system/kube-scheduler.service
+  scp kube-scheduler.yaml root@${host}:/etc/kubernetes/kube-scheduler.yaml
+  ssh root@${host} systemctl daemon-reload
+  ssh root@${host} systemctl enable kube-apiserver kube-controller-manager kube-scheduler
+  ssh root@${host} timeout 10s systemctl start kube-apiserver kube-controller-manager kube-scheduler
+  ssh root@${host} systemctl status kube-apiserver kube-controller-manager kube-scheduler --no-pager
+done
+```
+- Verify kubernetes controlplane components is running
+```
+kubectl cluster-info --kubeconfig admin.kubeconfig
+```
+- Apply kubelet-to-apiserver clusterrole for access authorization
+```
+cat <<EOF | kubectl apply --kubeconfig admin.kubeconfig -f -
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+  labels:
+    kubernetes.io/bootstrapping: rbac-defaults
+  name: system:kube-apiserver-to-kubelet
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes/proxy
+      - nodes/stats
+      - nodes/log
+      - nodes/spec
+      - nodes/metrics
+    verbs:
+      - "*"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: system:kube-apiserver
+  namespace: ""
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:kube-apiserver-to-kubelet
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: kubernetes
+EOF
+```

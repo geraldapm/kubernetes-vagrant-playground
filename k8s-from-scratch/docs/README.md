@@ -355,10 +355,6 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
   ssh root@${host} systemctl status kube-apiserver kube-controller-manager kube-scheduler --no-pager
 done
 ```
-- Verify kubernetes controlplane components is running
-```
-kubectl cluster-info --kubeconfig admin.kubeconfig
-```
 - Apply kubelet-to-apiserver clusterrole for access authorization
 ```
 cat <<EOF | kubectl apply --kubeconfig admin.kubeconfig -f -
@@ -396,4 +392,111 @@ subjects:
     kind: User
     name: kubernetes
 EOF
+```
+- Verify kubernetes controlplane components is running
+```
+export FLOATING_IP=192.168.56.199
+kubectl cluster-info --kubeconfig admin.kubeconfig
+curl --cacert ca.crt https://${FLOATING_IP}:6443/version
+unset FLOATING_IP=192.168.56.199
+```
+
+## Bootstrap kubernetes worker components on all nodes
+This section will initialize worker components on kubernetes including existng kubernetes controlplane nodes.
+- Install required packages for kubernetes port-forward while disabling swap
+```
+for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
+sudo apt-get -y install socat conntrack ipset
+sudo swapon --show
+sudo swapoff -a
+done
+```
+- Download kubernetes worker components binary files
+```
+# Downloading kubernetes binary files was skipped because it's already download while provisioning controlplane components
+export KUBERNETES_VERSION_MINOR=v1.32.10
+
+export CRICTL_VERSION=v1.32.0
+export RUNC_VERSION=v1.4.0
+export CNI_PLUGINS_VERSION=v1.8.0
+
+rm -f /tmp/crictl-${CRICTL_VERSION}-linux-amd64.tar.gz
+rm -rf /tmp/kubernetes-tools && mkdir -p /tmp/kubernetes-tools
+curl -L https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRICTL_VERSION}/crictl-${CRICTL_VERSION}-linux-amd64.tar.gz -o /tmp/crictl-${CRICTL_VERSION}-linux-amd64.tar.gz
+curl -L https://github.com/opencontainers/runc/releases/download/${RUNC_VERSION}/runc.amd64 -o /tmp/kubernetes-tools/runc
+curl -L https://github.com/containernetworking/plugins/releases/download/${CNI_PLUGINS_VERSION}/cni-plugins-linux-amd64-${CNI_PLUGINS_VERSION}.tgz -o /tmp/kubernetes-tools/cni-plugins.tgz
+tar xzvf /tmp/crictl-${CRICTL_VERSION}-linux-amd64.tar.gz -C /tmp/kubernetes-tools
+rm -f /tmp/crictl-${CRICTL_VERSION}-linux-amd64.tar.gz
+```
+- Install crictl, runc, and cni-plugins on all nodes
+```
+for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
+  scp /tmp/kubernetes-tools/{crictl,runc} root@${host}:/usr/local/bin
+  scp /tmp/kubernetes-server/server/bin/{kubelet,kube-proxy} root@${host}:/usr/local/bin
+  scp /tmp/kubernetes-tools/cni-plugins.tgz root@${host}:/tmp/cni-plugins.tgz
+  ssh root@${host} chmod +x /usr/local/bin/{crictl,runc}
+  ssh root@${host} mkdir -p /etc/cni/net.d /opt/cni/bin /var/lib/kubelet /var/lib/kube-proxy /var/lib/kubernetes /var/run/kubernetes
+  ssh root@${host} sudo tar -xvf /tmp/cni-plugins.tgz -C /opt/cni/bin/
+done
+```
+- Generate CNI default configs and copy to all nodes
+```
+export POD_CIDR="10.244.0.0/16"
+export CNI_VERSION=1.0.0
+cat <<EOF | sudo tee 10-bridge.conf
+{
+    "cniVersion": "${CNI_VERSION}",
+    "name": "bridge",
+    "type": "bridge",
+    "bridge": "cnio0",
+    "isGateway": true,
+    "ipMasq": true,
+    "ipam": {
+        "type": "host-local",
+        "ranges": [
+          [{"subnet": "${POD_CIDR}"}]
+        ],
+        "routes": [{"dst": "0.0.0.0/0"}]
+    }
+}
+EOF
+
+cat <<EOF | sudo tee 99-loopback.conf
+{
+    "cniVersion": "${CNI_VERSION}",
+    "name": "lo",
+    "type": "loopback"
+}
+EOF
+
+for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
+  scp {10-bridge.conf,99-loopback.conf} root@${host}:/etc/cni/net.d/
+done
+unset POD_CIDR
+unset CNI_PLUGINS_VERSION
+```
+- Setup crio configurations on all nodes
+```
+cat <<EOF | tee 02-cgroup-manager.conf
+[crio.runtime]
+conmon_cgroup = "pod"
+cgroup_manager = "cgroupfs"
+EOF
+
+cat <<EOF | tee 02-pod-management.conf
+[crio.runtime]
+default_runtime = "runc"
+
+[crio.image]
+pause_image="registry.k8s.io/pause:3.10"
+
+[crio.network]
+network_dir = "/etc/cni/net.d/"
+plugin_dir = "/opt/cni/bin"
+EOF
+
+for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
+  scp {02-cgroup-manager.conf,02-pod-management.conf}  root@${host}:/etc/crio/conf.d/
+  ssh root@${host} sudo systemctl restart crio
+done
 ```

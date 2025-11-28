@@ -840,7 +840,7 @@ kubectl apply -f coredns.yaml
 ```
 - Verify DNS resolution
 ```
- kubectl run --rm -it --image=busybox -- nslookup kubernetes
+kubectl run --rm -it --image=busybox -- nslookup kubernetes.default.svc.cluster.local
 ```
 
 ## Final test: Sonobuoy conformance testing

@@ -112,6 +112,7 @@ kubecerts=(
   "kube-etcd"
   "kube-apiserver-kubelet-client"
   "kube-apiserver-etcd-client"
+  "front-proxy-client"
 )
 
 for i in ${kubecerts[*]}; do

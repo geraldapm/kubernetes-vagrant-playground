@@ -77,6 +77,7 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
     kube-apiserver.key kube-apiserver.crt \
     kube-apiserver-kubelet-client.key kube-apiserver-kubelet-client.crt \
     kube-apiserver-etcd-client.key kube-apiserver-etcd-client.crt \
+    front-proxy-client.key front-proxy-client.crt \
     service-accounts.key service-accounts.crt \
     kube-etcd.key kube-etcd.crt \
     root@${host}:/etc/kubernetes/pki
@@ -888,9 +889,10 @@ root@kube-1:~# ./sonobuoy status
 ```
 - You can extract the file to get full logs and ensuring that the tests is succeeded. Now we have a production-ready kubernetes cluster :D
 ```
+rm -rf results
 mkdir results
 # extract the previous sonobuoy result
-tar xvzf XXXX.tar.gz
+tar xvzf XXXX.tar.gz -C results
 cat results/plugins/e2e/results/global/e2e.log
 ```
 
@@ -922,6 +924,7 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
     kube-apiserver.key kube-apiserver.crt \
     kube-apiserver-kubelet-client.key kube-apiserver-kubelet-client.crt \
     kube-apiserver-etcd-client.key kube-apiserver-etcd-client.crt \
+    front-proxy-client.key front-proxy-client.crt \
     service-accounts.key service-accounts.crt \
     kube-etcd.key kube-etcd.crt \
     root@${host}:/etc/kubernetes/pki
@@ -1091,4 +1094,20 @@ for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
   ssh root@${host} systemctl daemon-reload
   ssh root@${host} timeout 10s systemctl restart kubelet kube-proxy
 done
+```
+
+## Additional Notes:
+- You should restart Cilium Pods and Cilium Operator when restarting kube-apiserver for coordinated sync.
+```
+kubectl rollout restart ds -n kube-system cilium
+kubectl rollout restart deploy -n kube-system cilium-operator
+```
+- Currenty unfixed conformance tests error (FIXED with addition of front-proxy-client certs)
+```
+# Reproduce Error:
+./sonobuoy run --plugin=e2e --e2e-focus="Sample API Server using the current Aggregator"  --sonobuoy-image=docker.io/sonobuoy/sonobuoy --systemd-logs-image=docker.io/sonobuoy/systemd-logs
+
+Summarizing 1 Failure:
+  [FAIL] [sig-api-machinery] Aggregator [It] Should be able to support the 1.17 Sample API Server using the current Aggregator [Conformance] [sig-api-machinery, Conformance]
+  k8s.io/kubernetes/test/e2e/apimachinery/aggregator.go:419
 ```

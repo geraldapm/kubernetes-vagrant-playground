@@ -887,6 +887,12 @@ root@kube-1:~# ./sonobuoy status
  ./sonobuoy retrieve
 ```
 - You can extract the file to get full logs and ensuring that the tests is succeeded. Now we have a production-ready kubernetes cluster :D
+```
+mkdir results
+# extract the previous sonobuoy result
+tar xvzf XXXX.tar.gz
+cat results/plugins/e2e/results/global/e2e.log
+```
 
 
 ## Day-to-Day Operation 

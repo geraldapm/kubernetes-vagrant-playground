@@ -11,12 +11,12 @@ sonobuoy run --mode=certified-conformance
 - Check for results
 ```
 sonobuoy status
-         PLUGIN     STATUS   RESULT   COUNT                                PROGRESS
-            e2e    running                1   Passed:  0, Failed:  0, Remaining:411
-   systemd-logs   complete                5
 
-### Completed sonobuoy
-14:10:07 Sonobuoy has completed. Use `sonobuoy retrieve` to get results.
+        PLUGIN     STATUS   RESULT   COUNT                                PROGRESS
+            e2e   complete   passed       1   Passed:  0, Failed:  0, Remaining:411
+   systemd-logs   complete   passed       5                                        
+
+Sonobuoy has completed. Use `sonobuoy retrieve` to get results.
 ```
 - Get current sonobuoy test result
 ```

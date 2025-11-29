@@ -857,3 +857,26 @@ kubectl run --rm -it --image=busybox -- nslookup kubernetes.default.svc.cluster.
 ## Final test: Sonobuoy conformance testing
 This testing is intended to check if the newly-created kubernetes cluster from scratch is production-ready :D
 Refer to this link: https://blog.yangjerry.tw/k8s-conformance-sonobuoy-en/
+- Download sonobuoy and start the testing
+```
+curl -sfL -O https://github.com/vmware-tanzu/sonobuoy/releases/download/v0.57.2/sonobuoy_0.57.2_linux_amd64.tar.gz
+tar -xzvf sonobuoy_0.57.2_linux_amd64.tar.gz
+./sonobuoy run --mode=certified-conformance \
+    --sonobuoy-image=docker.io/sonobuoy/sonobuoy:v0.57
+    --systemd-logs-image=docker.io/sonobuoy/systemd-logs
+```
+- Check for around 2 hours check periodically with this command:
+```
+root@kube-1:~# ./sonobuoy status
+         PLUGIN     STATUS   RESULT   COUNT                                PROGRESS
+            e2e    running                1   Passed:  0, Failed:  0, Remaining:402
+   systemd-logs   complete                3
+
+### Completed sonobuoy
+14:10:07 Sonobuoy has completed. Use `sonobuoy retrieve` to get results.
+```
+- Get current sonobuoy test result
+```
+ ./sonobuoy retrieve
+```
+- You can extract the file to get full logs and ensuring that the tests is succeeded. Now we have a production-ready kubernetes cluster :D

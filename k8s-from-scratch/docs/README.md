@@ -12,6 +12,17 @@ Reference: https://github.com/kelseyhightower/kubernetes-the-hard-way
 
 ## Define Control Plane and Worker Hostname & IPs
 - We are using below configurations with POD IP range 10.244.0.0/16 and Service IP range 10.96.0.0/12. Make sure that /etc/hosts on each node server is identical to ease the installation.
+- Mase sure that each hostname resolution does not resolve to localhost! Check this problem https://github.com/kubernetes/kubernetes/issues/114073
+```
+BAD:
+127.0.1.1 gpmrawk8s-controlplane1 gpmrawk8s-controplane1.vagrant.gpm.my.id
+```
+```
+Good:
+127.0.1.1 localhost
+192.168.56.151 gpmrawk8s-controlplane1 gpmrawk8s-controlplane1.vagrant.gpm.my.id
+```
+
 ```
 192.168.56.151 gpmrawk8s-controlplane1 gpmrawk8s-controlplane1.vagrant.gpm.my.id
 192.168.56.152 gpmrawk8s-controlplane2 gpmrawk8s-controlplane2.vagrant.gpm.my.id

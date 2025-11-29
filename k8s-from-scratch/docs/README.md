@@ -891,9 +891,13 @@ root@kube-1:~# ./sonobuoy status
 ```
 rm -rf results
 mkdir results
-# extract the previous sonobuoy result
-tar xvzf XXXX.tar.gz -C results
+outfile=$(sonobuoy retrieve)
+tar xvzf $outfile -C results
 cat results/plugins/e2e/results/global/e2e.log
+```
+- Cleanup sonobuoy tests
+```
+./sonobuoy delete
 ```
 
 

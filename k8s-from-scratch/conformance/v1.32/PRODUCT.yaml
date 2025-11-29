@@ -1,0 +1,10 @@
+vendor: GPM
+name: GPM Kubernetes from Scratch
+version: v0.1
+website_url: https://gpm.my.id
+repo_url: https://github.com/geraldapm/kubernetes-vagrant-playground
+documentation_url: https://gpm.my.id
+product_logo_url: https://gpm.my.id
+type: distribution
+description: "Not for registering into certified kubernetes distributions. GPM Kubernetes that has been provisioned from scratch. Inspired from kubernetes-the-hard way."
+contact_email_address: gerald@gpm.my.id

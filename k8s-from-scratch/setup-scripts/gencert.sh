@@ -102,24 +102,6 @@ unset NODEIP
 ### END Generating all kubernetes node individual certs
 
 ### Begin Kubernetes Components Cert Generation
-# "kube-proxy" "kube-scheduler"
-#   "kube-controller-manager"
-#   "kube-api-server"
-#   "service-accounts"
-
-# # kube-proxy
-# export KUBE_COMPONENT=kube-proxy
-# openssl genrsa -out "$KUBE_COMPONENT.key" 4096
-# openssl req -new -key "$KUBE_COMPONENT.key" -sha256 \
-#     -config "ca.conf" -section $KUBE_COMPONENT \
-#     -out "$KUBE_COMPONENT.csr"
-# openssl x509 -req -days 3653 -in "$KUBE_COMPONENT.csr" \
-#     -copy_extensions copyall \
-#     -sha256 -CA "ca.crt" \
-#     -CAkey "ca.key" \
-#     -CAcreateserial \
-#     -out "$KUBE_COMPONENT.crt"
-
 kubecerts=(
   "admin"
   "kube-proxy"

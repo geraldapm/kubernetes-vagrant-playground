@@ -75,6 +75,8 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
   scp \
     ca.key ca.crt \
     kube-apiserver.key kube-apiserver.crt \
+    kube-apiserver-kubelet-client.key kube-apiserver-kubelet-client.crt \
+    kube-apiserver-etcd-client.key kube-apiserver-etcd-client.crt \
     service-accounts.key service-accounts.crt \
     kube-etcd.key kube-etcd.crt \
     root@${host}:/etc/kubernetes/pki

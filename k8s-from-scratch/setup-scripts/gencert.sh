@@ -110,6 +110,8 @@ kubecerts=(
   "kube-apiserver"
   "service-accounts"
   "kube-etcd"
+  "kube-apiserver-kubelet-client"
+  "kube-apiserver-etcd-client"
 )
 
 for i in ${kubecerts[*]}; do

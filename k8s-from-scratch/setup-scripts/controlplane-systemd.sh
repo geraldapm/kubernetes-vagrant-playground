@@ -37,7 +37,7 @@ export NODEIP=$IP_CP1
 
 # kube-scheduler-yaml-generate
 cat <<EOF | sudo tee kube-scheduler.yaml
-apiVersion: kubescheduler.config.k8s.io/v1alpha1
+apiVersion: kubescheduler.config.k8s.io/v1
 kind: KubeSchedulerConfiguration
 clientConnection:
   kubeconfig: "/etc/kubernetes/kube-scheduler.kubeconfig"
@@ -160,14 +160,14 @@ ExecStart=/usr/local/bin/kube-apiserver \\
   --client-ca-file=/etc/kubernetes/pki/ca.crt \\
   --enable-admission-plugins=NamespaceLifecycle,NodeRestriction,LimitRanger,ServiceAccount,DefaultStorageClass,ResourceQuota \\
   --etcd-cafile=/etc/kubernetes/pki/etcd/ca.crt \\
-  --etcd-certfile=/etc/kubernetes/pki/etcd/kube-etcd.crt \\
-  --etcd-keyfile=/etc/kubernetes/pki/etcd/kube-etcd.key \\
+  --etcd-certfile=/etc/kubernetes/pki/kube-apiserver-etcd-client.crt \\
+  --etcd-keyfile=/etc/kubernetes/pki/kube-apiserver-etcd-client.key \\
   --etcd-servers=https://${IP_CP1}:2379,https://${IP_CP2}:2379,https://${IP_CP3}:2379 \\
   --event-ttl=1h \\
   --encryption-provider-config=/etc/kubernetes/encryption-config.yaml \\
   --kubelet-certificate-authority=/etc/kubernetes/pki/etcd/ca.crt \\
-  --kubelet-client-certificate=/etc/kubernetes/pki/kube-apiserver.crt \\
-  --kubelet-client-key=/etc/kubernetes/pki/kube-apiserver.key \\
+  --kubelet-client-certificate=/etc/kubernetes/pki/kube-apiserver-kubelet-client.crt \\
+  --kubelet-client-key=/etc/kubernetes/pki/kube-apiserver-kubelet-client.key \\
   --runtime-config=api/all=true \\
   --service-account-key-file=/etc/kubernetes/pki/service-accounts.crt \\
   --service-account-signing-key-file=/etc/kubernetes/pki/service-accounts.key \\

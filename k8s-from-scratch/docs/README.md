@@ -9,16 +9,20 @@ Reference: https://github.com/kelseyhightower/kubernetes-the-hard-way
 ## Provision VM using vagrant
 - Included scripts to initial provision VM and setup crio as CRI manually
 - Included scripts to install keepalived as floating IP to adapt multi-node control-plane nodes
+- It is recommended to use bastion host that has provisioned using vagrant. Run below command on the directory where Vagrantfile is located
+```
+vagrant up
+```
 
 ## Define Control Plane and Worker Hostname & IPs
 - We are using below configurations with POD IP range 10.244.0.0/16 and Service IP range 10.96.0.0/12. Make sure that /etc/hosts on each node server is identical to ease the installation.
 - Make sure that each hostname resolution does not resolve to localhost! Check this problem https://github.com/kubernetes/kubernetes/issues/114073
 ```
-BAD:
+# BAD
 127.0.1.1 gpmrawk8s-controlplane1 gpmrawk8s-controplane1.vagrant.gpm.my.id
 ```
 ```
-Good:
+# Good
 127.0.1.1 localhost
 192.168.56.151 gpmrawk8s-controlplane1 gpmrawk8s-controlplane1.vagrant.gpm.my.id
 ```
@@ -601,10 +605,11 @@ done
 kubectl get node  --kubeconfig admin.kubeconfig
 
 NAME                      STATUS   ROLES    AGE     VERSION
-gpmrawk8s-controlplane1   Ready    <none>   6m26s   v1.32.10
-gpmrawk8s-controlplane2   Ready    <none>   6m22s   v1.32.10
-gpmrawk8s-worker1         Ready    <none>   6m11s   v1.32.10
-gpmrawk8s-worker2         Ready    <none>   6m6s    v1.32.10
+gpmrawk8s-controlplane1   Ready    <none>   10h   v1.32.10
+gpmrawk8s-controlplane2   Ready    <none>   10h   v1.32.10
+gpmrawk8s-controlplane3   Ready    <none>   10h   v1.32.10
+gpmrawk8s-worker1         Ready    <none>   10h   v1.32.10
+gpmrawk8s-worker2         Ready    <none>   10h   v1.32.10
 ```
 ## Enable admin remote access
 - Copy admin.kubeconfig to ~/.kube/config
@@ -880,3 +885,8 @@ root@kube-1:~# ./sonobuoy status
  ./sonobuoy retrieve
 ```
 - You can extract the file to get full logs and ensuring that the tests is succeeded. Now we have a production-ready kubernetes cluster :D
+
+
+## Day-to-Day Operation 
+- To add new worker nodes, just follow the same steps as in "Bootstrap kubernetes worker components on all nodes" section.
+- TODO: Add renew certificates procedure.

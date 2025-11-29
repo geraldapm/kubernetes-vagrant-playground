@@ -894,6 +894,14 @@ mkdir results
 outfile=$(sonobuoy retrieve)
 tar xvzf $outfile -C results
 cat results/plugins/e2e/results/global/e2e.log
+
+# Eaxmple output
+Ran 411 of 6624 Specs in 10397.268 seconds
+SUCCESS! -- 411 Passed | 0 Failed | 0 Pending | 6213 Skipped
+PASS
+
+Ginkgo ran 1 suite in 2h53m49.05468171s
+Test Suite Passed
 ```
 - Cleanup sonobuoy tests
 ```

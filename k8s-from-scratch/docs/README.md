@@ -88,7 +88,7 @@ done
 Change "gpmrawk8s" with hostname prefix for easy identifying and have those lists stored on /etc/hosts.
 - Install kubectl on origin server
 ```
-export KUBERNETS_VERSION=1.32
+export KUBERNETES_VERSION=1.32
 sudo mkdir -p /etc/apt/trusted.gpg.d
 curl -fsSL https://pkgs.k8s.io/core:/stable:/v$KUBERNETES_VERSION/deb/Release.key | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg
 echo "deb [signed-by=/etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v$KUBERNETES_VERSION/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list

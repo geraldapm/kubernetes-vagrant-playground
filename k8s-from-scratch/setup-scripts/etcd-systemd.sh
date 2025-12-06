@@ -40,7 +40,7 @@ Documentation=https://github.com/coreos
 [Service]
 Type=notify
 User=etcd
-Grou=etcd
+Group=etcd
 ExecStart=/usr/local/bin/etcd \\
   --name ${NODENAME} \\
   --cert-file=/etc/kubernetes/pki/etcd/kube-etcd.crt \\
@@ -78,7 +78,7 @@ Documentation=https://github.com/coreos
 [Service]
 Type=notify
 User=etcd
-Grou=etcd
+Group=etcd
 ExecStart=/usr/local/bin/etcd \\
   --name ${NODENAME} \\
   --cert-file=/etc/kubernetes/pki/etcd/kube-etcd.crt \\
@@ -116,7 +116,7 @@ Documentation=https://github.com/coreos
 [Service]
 Type=notify
 User=etcd
-Grou=etcd
+Group=etcd
 ExecStart=/usr/local/bin/etcd \\
   --name ${NODENAME} \\
   --cert-file=/etc/kubernetes/pki/etcd/kube-etcd.crt \\

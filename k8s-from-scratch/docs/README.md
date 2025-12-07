@@ -544,6 +544,7 @@ port: 10250
 resolvConf: "/run/systemd/resolve/resolv.conf"
 registerNode: true
 runtimeRequestTimeout: "15m"
+staticPodPath: "/etc/kubernetes/manifests"
 tlsCertFile: "/var/lib/kubelet/kubelet.crt"
 tlsPrivateKeyFile: "/var/lib/kubelet/kubelet.key"
 EOF
@@ -601,8 +602,9 @@ for host in $(cat /etc/hosts | grep "gpmrawk8s-" | awk '{print $2}' ); do
   scp kube-proxy-config.yaml root@${host}:/var/lib/kube-proxy/kube-proxy-config.yaml
   scp {kubelet.service,kube-proxy.service} root@${host}:/etc/systemd/system/
   ssh root@${host} systemctl daemon-reload
+  ssh root@${host} mkdir -p /etc/kubernetes/manifests
   ssh root@${host} systemctl enable kubelet kube-proxy
-  ssh root@${host} timeout 10s systemctl start kubelet kube-proxy
+  ssh root@${host} timeout 10s systemctl restart kubelet kube-proxy
   ssh root@${host} systemctl status kubelet kube-proxy --no-pager
 done
 ```

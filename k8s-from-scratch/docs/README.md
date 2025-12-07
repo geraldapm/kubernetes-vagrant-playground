@@ -304,6 +304,7 @@ done
 ```bash
 for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' ); do
   ssh root@${host} mkdir -p /var/lib/etcd /etc/kubernetes/pki/etcd
+  ssh root@${host} chmod 700 /var/lib/etcd
   ssh root@${host} useradd -m -s /sbin/nologin -U etcd -u 427
   ssh root@${host} chown -R etcd:etcd /var/lib/etcd
   scp  ca.crt ca.key kube-etcd.crt kube-etcd.key \

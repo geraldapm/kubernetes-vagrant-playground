@@ -45,8 +45,8 @@ ExecStart=/usr/local/bin/etcd \\
   --name ${NODENAME} \\
   --cert-file=/etc/kubernetes/pki/etcd/kube-etcd.crt \\
   --key-file=/etc/kubernetes/pki/etcd/kube-etcd.key \\
-  --peer-cert-file=/etc/kubernetes/pki/etcd/kube-etcd.crt \\
-  --peer-key-file=/etc/kubernetes/pki/etcd/kube-etcd.key \\
+  --peer-cert-file=/etc/kubernetes/pki/etcd/kube-etcd-peer.crt \\
+  --peer-key-file=/etc/kubernetes/pki/etcd/kube-etcd-peer.key \\
   --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt \\
   --peer-trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt \\
   --peer-client-cert-auth \\
@@ -83,8 +83,8 @@ ExecStart=/usr/local/bin/etcd \\
   --name ${NODENAME} \\
   --cert-file=/etc/kubernetes/pki/etcd/kube-etcd.crt \\
   --key-file=/etc/kubernetes/pki/etcd/kube-etcd.key \\
-  --peer-cert-file=/etc/kubernetes/pki/etcd/kube-etcd.crt \\
-  --peer-key-file=/etc/kubernetes/pki/etcd/kube-etcd.key \\
+  --peer-cert-file=/etc/kubernetes/pki/etcd/kube-etcd-peer.crt \\
+  --peer-key-file=/etc/kubernetes/pki/etcd/kube-etcd-peer.key \\
   --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt \\
   --peer-trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt \\
   --peer-client-cert-auth \\
@@ -121,8 +121,8 @@ ExecStart=/usr/local/bin/etcd \\
   --name ${NODENAME} \\
   --cert-file=/etc/kubernetes/pki/etcd/kube-etcd.crt \\
   --key-file=/etc/kubernetes/pki/etcd/kube-etcd.key \\
-  --peer-cert-file=/etc/kubernetes/pki/etcd/kube-etcd.crt \\
-  --peer-key-file=/etc/kubernetes/pki/etcd/kube-etcd.key \\
+  --peer-cert-file=/etc/kubernetes/pki/etcd/kube-etcd-peer.crt \\
+  --peer-key-file=/etc/kubernetes/pki/etcd/kube-etcd-peer.key \\
   --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt \\
   --peer-trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt \\
   --peer-client-cert-auth \\

@@ -452,7 +452,7 @@ done
 ```
 export POD_CIDR="10.244.0.0/16"
 export CNI_VERSION=1.0.0
-cat <<EOF | sudo tee 10-bridge.conf
+cat <<EOF | sudo tee 90-bridge.conf
 {
     "cniVersion": "${CNI_VERSION}",
     "name": "bridge",

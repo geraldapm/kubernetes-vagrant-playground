@@ -111,7 +111,7 @@ kubecerts=(
   "service-accounts"
   "kube-etcd"
   "kube-etcd-peer"
-  "kube-etcd-healtcheck-client"
+  "kube-etcd-healthcheck-client"
   "kube-apiserver-kubelet-client"
   "kube-apiserver-etcd-client"
   "front-proxy-client"

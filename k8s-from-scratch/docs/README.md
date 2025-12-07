@@ -862,6 +862,23 @@ kubectl apply -f coredns.yaml
 kubectl run --rm -it --image=busybox -- nslookup kubernetes.default.svc.cluster.local
 ```
 
+## Node labeling
+You want to give label to nicer look when doing `kubectl get nodes`. Here is the way:
+```
+# Label control-plane nodes
+kubectl label node $(cat /etc/hosts | grep "gpmrawk8s-controlplane" | awk '{print $2}' ) node-role.kubernetes.io/control-plane=
+kubectl label node $(cat /etc/hosts | grep "gpmrawk8s-worker" | awk '{print $2}' ) node-role.kubernetes.io/worker=
+
+# Results
+gerald@gpmbastionsys:~$ kubectl get node
+NAME                      STATUS   ROLES           AGE   VERSION
+gpmrawk8s-controlplane1   Ready    control-plane   32h   v1.34.2
+gpmrawk8s-controlplane2   Ready    control-plane   32h   v1.34.2
+gpmrawk8s-controlplane3   Ready    control-plane   32h   v1.34.2
+gpmrawk8s-worker1         Ready    worker          32h   v1.34.2
+gpmrawk8s-worker2         Ready    worker          32h   v1.34.2
+```
+
 ## Final test: Sonobuoy conformance testing
 This testing is intended to check if the newly-created kubernetes cluster from scratch is production-ready :D
 Refer to this link: https://blog.yangjerry.tw/k8s-conformance-sonobuoy-en/

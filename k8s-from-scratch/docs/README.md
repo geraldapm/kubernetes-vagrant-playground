@@ -544,6 +544,7 @@ port: 10250
 resolvConf: "/run/systemd/resolve/resolv.conf"
 registerNode: true
 runtimeRequestTimeout: "15m"
+staticPodPath: "/etc/kubernetes/manifests"
 tlsCertFile: "/var/lib/kubelet/kubelet.crt"
 tlsPrivateKeyFile: "/var/lib/kubelet/kubelet.key"
 EOF

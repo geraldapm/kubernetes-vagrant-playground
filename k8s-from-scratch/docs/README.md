@@ -319,7 +319,7 @@ for host in $(cat /etc/hosts | grep gpmrawk8s-controlplane | awk '{print $2}' );
   scp etcd-${host}.service root@${host}:/etc/systemd/system/etcd.service
   ssh root@${host} systemctl daemon-reload
   ssh root@${host} systemctl enable etcd
-  ssh root@${host} timeout 10s systemctl start etcd
+  ssh root@${host} timeout 10s systemctl restart etcd
   ssh root@${host} systemctl status etcd --no-pager
 done
 ```
